@@ -1,0 +1,13 @@
+qiskit==1.4.2
+qiskit-aer==0.15.1
+qiskit-algorithms==0.3.1
+qiskit-optimization==0.6.1
+numpy
+scipy
+ortools
+streamlit
+folium
+streamlit-folium
+requests
+prettier
+
