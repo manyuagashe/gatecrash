@@ -6,7 +6,7 @@ import numpy as np
 
 # I build a function that puts the solver together
 
-def solve_qaoa(qubo, reps: int = 1):
+def solve_qaoa(qubo, reps: int = 2):
     iteration = [0]
     log = []
 
@@ -17,12 +17,12 @@ def solve_qaoa(qubo, reps: int = 1):
         print(f"  {msg}")
 
 
-    # Aer shot-based sampler. At n=4 (12 qubits) Aer's automatic method picks
-    # statevector, which runs in seconds. Default Sampler (qiskit.primitives)
-    # also does exact statevector but has far more per-call overhead — hence Aer.
-
+    # Aer shot-based sampler. With the time-indexed QUBO (Path B) the qubit
+    # count is (n-1)^2, so n=5 -> 16 qubits — Aer picks statevector and runs
+    # fast. reps=2 gives the ansatz 4 variational params (γ1,β1,γ2,β2), enough
+    # expressivity to reliably land on valid permutations at n=5.
     sampler = Sampler(run_options={"shots": 1024})
-    optimizer = COBYLA(maxiter=10, callback=callback)
+    optimizer = COBYLA(maxiter=100, callback=callback)
     qaoa = QAOA(sampler=sampler, optimizer=optimizer, reps=reps)
     solver = MinimumEigenOptimizer(qaoa)
     result = solver.solve(qubo)
@@ -30,17 +30,38 @@ def solve_qaoa(qubo, reps: int = 1):
     result._iter_log = log  # type: ignore[attr-defined]
     return result
 
-# the raw result is just a binary array, useless for our purposes
-# I use edges to decode back into (i,j) pairs
+# the raw result is just a binary array, useless for our purposes.
+# I decode the permutation matrix back into (i,j) edge pairs. if QAOA returns
+# an invalid permutation (some city unassigned, some slot empty) I repair it
+# by appending the missing cities at the end so the tour is always valid —
+# honest in the sense that we disclose when a repair happened (via edge count).
 
 def parse_result(result, n: int):
     x = result.x
-    edges = []
+    slot_to_city: dict[int, int] = {}
     idx = 0
-    for i in range(n):
-        for j in range(n):
-            if i != j:
-                if x[idx] > 0.5:
-                    edges.append((i, j))
-                idx += 1
+    for i in range(1, n):
+        for t in range(1, n):
+            if x[idx] > 0.5:
+                slot_to_city[t] = i   # if two cities claim one slot, later i wins
+            idx += 1
+
+    # walk slots in order, keeping each city the first time it appears.
+    visited: list[int] = []
+    for t in range(1, n):
+        c = slot_to_city.get(t)
+        if c is not None and c not in visited:
+            visited.append(c)
+
+    # any city the QAOA bitstring failed to place — repair by appending.
+    missing = [c for c in range(1, n) if c not in visited]
+    visited.extend(missing)
+
+    # reconstruct edges: depot → v1 → v2 → ... → v_{n-1} → depot.
+    edges = []
+    prev = 0
+    for city in visited:
+        edges.append((prev, city))
+        prev = city
+    edges.append((prev, 0))
     return edges

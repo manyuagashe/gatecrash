@@ -56,7 +56,7 @@ function updateCounters() {
   // benchmark n = min(1 + stops, BENCHMARK_MAX) — depot + as many stops as we'll fit
   const nPreview = Math.min(1 + state.stops.length, BENCHMARK_MAX);
   document.getElementById("bench-n").textContent = state.stops.length === 0 ? "—" : nPreview;
-  document.getElementById("qubit-count").textContent = state.stops.length === 0 ? "—" : nPreview * (nPreview - 1);
+  document.getElementById("qubit-count").textContent = state.stops.length === 0 ? "—" : (nPreview - 1) ** 2;
 }
 
 const logEl = document.getElementById("log");
@@ -250,7 +250,7 @@ async function loadDemo() {
     placeDepot(CHAPEL_HILL, "depot");
   }
   logLine("gatecrash instrument ready", "orange");
-  logLine(`benchmark cap: n=${BENCHMARK_MAX} · ${BENCHMARK_MAX * (BENCHMARK_MAX - 1)} qubits`, "dim");
+  logLine(`benchmark cap: n=${BENCHMARK_MAX} · ${(BENCHMARK_MAX - 1) ** 2} qubits`, "dim");
 }
 loadDemo();
 
@@ -262,7 +262,7 @@ function fact(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
 
 const nVals = [4, 5, 6, 8, 10, 12, 14, 16, 18, 20];
 const solutionSpace = nVals.map(n => fact(n - 1) / 2);
-const quboQubits    = nVals.map(n => n * (n - 1));
+const quboQubits    = nVals.map(n => (n - 1) ** 2);
 
 const ctx = document.getElementById("scaling-chart").getContext("2d");
 const classicalCol = cssVar("--classical");
@@ -282,7 +282,7 @@ new Chart(ctx, {
         borderWidth: 2, borderDash: [6, 6], tension: 0.2, pointRadius: 3,
       },
       {
-        label: "qubits  =  n(n−1)",
+        label: "qubits  =  (n−1)²",
         data: quboQubits,
         borderColor: orangeCol, backgroundColor: "transparent",
         borderWidth: 2.5, tension: 0.2, pointRadius: 3,

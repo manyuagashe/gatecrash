@@ -400,3 +400,35 @@ code { color: var(--orange-2); }
   border-color: var(--bg-panel);
   box-shadow: 0 0 0 3px var(--orange-wash), 0 1px 3px rgba(234,88,12,.35);
 }
+
+/* ============ §2 stakes — impact framing ============ */
+.stakes {
+  max-width: 1360px; margin: 0 auto;
+  padding: 48px 28px;
+  border-top: 1px solid var(--rule);
+}
+.stakes h2 {
+  font-size: clamp(24px, 3vw, 34px); font-style: italic; font-weight: 500;
+  margin: 8px 0 24px;
+  max-width: 900px;
+}
+.stake-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 20px;
+}
+.stake {
+  padding: 22px;
+  border-right: 1px solid var(--rule);
+}
+.stake:last-child { border-right: 0; }
+.stake h3 {
+  font-family: var(--f-serif); font-size: 18px; font-weight: 500;
+  margin: 0 0 8px;
+}
+.stake p { font-size: 13.5px; color: var(--ink-soft); }
+
+/* equation block inside a method step needs a little breathing room */
+.step .equation { margin-top: 12px; font-size: 11.5px; }
+

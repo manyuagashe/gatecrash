@@ -32,7 +32,7 @@ BENCHMARK_MAX = 5
 class OptimizeRequest(BaseModel):
     coords: List[Tuple[float, float]]
     num_vehicles: int = 1
-    qaoa_reps: int = 1
+    qaoa_reps: int = 2
 
 
 def _route_payload(edges, matrix, elapsed_ms):
