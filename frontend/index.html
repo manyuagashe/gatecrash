@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gatecrash — QAOA for vehicle routing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- nav: wordmark + source. no marketing tags. -->
+  <header class="top">
+    <div class="wordmark">
+      <span class="bra">|</span><span class="word">gatecrash</span><span class="ket">⟩</span>
+    </div>
+    <a href="https://github.com" class="top-link mono">source ↗</a>
+  </header>
+
+  <!-- always-on system status strip -->
+  <div class="status-bar">
+    <div class="status-cell">
+      <span class="status-key">stack</span>
+      <span class="status-val mono">qiskit·1.4.2 / aer·0.15.1</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-key">ansatz</span>
+      <span class="status-val mono">QAOA · reps=1</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-key">optimizer</span>
+      <span class="status-val mono">COBYLA · maxiter=50</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-key">shots</span>
+      <span class="status-val mono">1024</span>
+    </div>
+    <div class="status-cell">
+      <span class="status-key">benchmark cap</span>
+      <span class="status-val mono">n=5 · 20 qubits</span>
+    </div>
+  </div>
+
+  <!-- problem: compact, research-paper -->
+  <section class="paper">
+    <div class="paper-id mono">§1 · PROBLEM</div>
+    <h1>Solving a directed‑cycle VRP with QAOA, benchmarked against a classical baseline on <em>identical</em> problem instances.</h1>
+    <p class="abstract">
+      Binary <span class="mono">x<sub>ij</sub></span> for directed edge
+      (<span class="mono">i</span>, <span class="mono">j</span>). Both solvers
+      receive the same distance matrix, same <span class="mono">n</span>.
+      No hand‑tuning between runs.
+    </p>
+    <pre class="equation mono">
+minimize    Σ  d_ij · x_ij                    (edge cost)
+           i≠j
+subject to  Σ x_ij = 1  ∀ j                   (arrive once)
+            i
+            Σ x_ij = 1  ∀ i                   (depart once)
+            j
+            x_ij ∈ {0, 1}
+    </pre>
+  </section>
+
+  <!-- INSTRUMENT — primary surface, biggest section -->
+  <section id="bench" class="bench">
+    <div class="bench-head">
+      <div class="paper-id mono">§2 · INSTRUMENT</div>
+      <h2>Benchmark bench</h2>
+      <p class="sub">
+        Chapel Hill, NC. Click the map to add stops. Shift‑click to remove.
+        Benchmark runs at <span class="mono">n=5</span> — if you add more, both
+        solvers are trimmed identically.
+      </p>
+    </div>
+
+    <div class="bench-card">
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div class="map-legend mono">
+          <span><span class="dot-depot"></span> depot</span>
+          <span><span class="dot-stop"></span> stop</span>
+          <span><span class="line-c"></span> classical</span>
+          <span><span class="line-q"></span> quantum</span>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="panel-grid">
+          <div class="kv">
+            <div class="kv-key mono">stops</div>
+            <div class="kv-val mono" id="stop-count">0</div>
+          </div>
+          <div class="kv">
+            <div class="kv-key mono">benchmark n</div>
+            <div class="kv-val mono" id="bench-n">—</div>
+          </div>
+          <div class="kv">
+            <div class="kv-key mono">qubits</div>
+            <div class="kv-val mono" id="qubit-count">—</div>
+          </div>
+          <div class="kv">
+            <div class="kv-key mono">parity</div>
+            <div class="kv-val mono ok">✓</div>
+          </div>
+        </div>
+
+        <button id="run-btn" class="run-btn">
+          <span class="run-label">RUN BENCHMARK</span>
+          <span class="run-spinner"></span>
+        </button>
+
+        <div id="status" class="status-line mono">ready</div>
+
+        <div id="trim-note" class="note hidden mono">
+          trimmed <span id="trim-from">0</span> → <span id="trim-to">5</span> stops · both solvers see the same n
+        </div>
+
+        <div class="tabs mono">
+          <button class="tab is-active" data-view="both">both</button>
+          <button class="tab" data-view="classical">classical</button>
+          <button class="tab" data-view="quantum">quantum</button>
+        </div>
+
+        <table class="bench-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="mono">distance (km)</th>
+              <th class="mono">CO₂ (kg)</th>
+              <th class="mono">compute (ms)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row-classical">
+              <td><span class="swatch swatch-c"></span>classical · greedy NN</td>
+              <td class="mono" id="c-dist">—</td>
+              <td class="mono" id="c-co2">—</td>
+              <td class="mono" id="c-ms">—</td>
+            </tr>
+            <tr class="row-quantum">
+              <td><span class="swatch swatch-q"></span>quantum · QAOA</td>
+              <td class="mono" id="q-dist">—</td>
+              <td class="mono" id="q-co2">—</td>
+              <td class="mono" id="q-ms">—</td>
+            </tr>
+            <tr class="row-delta">
+              <td class="mono">Δ</td>
+              <td class="mono" id="d-dist">—</td>
+              <td class="mono" id="d-co2">—</td>
+              <td class="mono">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </aside>
+    </div>
+
+    <div class="log-card">
+      <div class="log-head">
+        <span class="paper-id mono">§2.1 · RUN LOG</span>
+        <span class="mono log-sub" id="log-sub">stdout</span>
+      </div>
+      <pre class="log mono" id="log"></pre>
+    </div>
+  </section>
+
+  <section class="method">
+    <div class="paper-id mono">§3 · METHOD</div>
+    <h2>From pin coordinates to quantum bitstring.</h2>
+    <ol class="steps">
+      <li class="step">
+        <div class="step-n mono">3.1</div>
+        <h3>Distance matrix</h3>
+        <p>Haversine over lat/lon gives a symmetric <code>n × n</code> matrix in km.</p>
+      </li>
+      <li class="step">
+        <div class="step-n mono">3.2</div>
+        <h3>QUBO encoding</h3>
+        <p>Flow constraints become squared penalty terms via <code>QuadraticProgramToQubo</code>. Result: <code>n(n−1)</code>‑variable Ising Hamiltonian.</p>
+      </li>
+      <li class="step">
+        <div class="step-n mono">3.3</div>
+        <h3>QAOA circuit</h3>
+        <p>Alternating <code>e<sup>−iγH<sub>C</sub></sup></code> / <code>e<sup>−iβH<sub>M</sub></sup></code> layers. One rep, two parameters. COBYLA in the outer loop.</p>
+      </li>
+      <li class="step">
+        <div class="step-n mono">3.4</div>
+        <h3>Decode</h3>
+        <p>Most‑probable bitstring from 1024 shots → edges → ordered route.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="scaling">
+    <div class="paper-id mono">§4 · RESOURCE SCALING</div>
+    <h2>Solution space grows factorially. Encoding grows polynomially.</h2>
+    <p class="fine">
+      For <span class="mono">n</span> nodes on a complete graph there are
+      <span class="mono">(n−1)!/2</span> distinct Hamiltonian cycles. The QUBO
+      encoding in <span class="src">backend/vrp.py</span> uses
+      <span class="mono">n(n−1)</span> binary variables — one qubit per directed
+      edge. The gap between these curves is the argument for quantum: the search
+      space explodes faster than the resources required to query it.
+    </p>
+    <div class="chart-wrap">
+      <canvas id="scaling-chart"></canvas>
+    </div>
+    <p class="fine-note mono">
+      |routes| = (n−1)! / 2 · Hamiltonian cycles on K<sub>n</sub><br/>
+      qubits = n(n−1) · exact count from backend/vrp.py
+    </p>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-row mono">
+      <span>|gatecrash⟩</span>
+      <a href="https://github.com">source ↗</a>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
